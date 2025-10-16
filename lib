@@ -1,127 +1,311 @@
--- illgui.space UI Library - Точная копия дизайна
+-- illgui.space - ImGui-style library для Roblox
 local IllGui = {}
 IllGui.__index = IllGui
 
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- Точные цвета из скриншота
+-- Цвета из скриншота
 local Colors = {
-    MainBg = Color3.fromRGB(12, 12, 12),
-    SidebarBg = Color3.fromRGB(18, 18, 18),
-    ContentBg = Color3.fromRGB(15, 15, 15),
-    SectionBg = Color3.fromRGB(20, 20, 20),
+    WindowBg = Color3.fromRGB(12, 12, 12),
+    TitleBg = Color3.fromRGB(18, 18, 18),
+    ChildBg = Color3.fromRGB(15, 15, 15),
     Border = Color3.fromRGB(35, 35, 35),
+    FrameBg = Color3.fromRGB(20, 20, 20),
+    FrameHovered = Color3.fromRGB(25, 25, 25),
     Text = Color3.fromRGB(200, 200, 200),
-    TextDim = Color3.fromRGB(140, 140, 140),
-    Accent = Color3.fromRGB(90, 140, 255),
-    TabHover = Color3.fromRGB(25, 25, 25),
-    CheckboxBg = Color3.fromRGB(25, 25, 25),
-    CheckboxCheck = Color3.fromRGB(255, 255, 255),
-    SliderBg = Color3.fromRGB(30, 30, 30),
-    SliderFill = Color3.fromRGB(70, 110, 200),
-    KeybindBg = Color3.fromRGB(28, 28, 28),
+    TextDisabled = Color3.fromRGB(140, 140, 140),
+    ButtonActive = Color3.fromRGB(90, 140, 255),
+    CheckMark = Color3.fromRGB(255, 255, 255),
+    SliderGrab = Color3.fromRGB(70, 110, 200),
+    SliderGrabActive = Color3.fromRGB(90, 130, 220),
 }
 
-function IllGui:CreateWindow(title)
-    local window = {Tabs = {}, CurrentTab = nil}
+function IllGui.CreateContext()
+    local ctx = {}
+    ctx.Windows = {}
+    ctx.CurrentWindow = nil
+    ctx.ScreenGui = nil
     
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "IllGuiSpace"
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.Parent = game.CoreGui
-    
-    -- Main container
-    local main = Instance.new("Frame")
-    main.Name = "Main"
-    main.Size = UDim2.new(0, 645, 0, 470)
-    main.Position = UDim2.new(0.5, -322, 0.5, -235)
-    main.BackgroundColor3 = Colors.MainBg
-    main.BorderSizePixel = 0
-    main.ClipsDescendants = true
-    main.Parent = screenGui
-    
-    local mainStroke = Instance.new("UIStroke")
-    mainStroke.Color = Colors.Border
-    mainStroke.Thickness = 1
-    mainStroke.Parent = main
-    
-    -- Title bar с точным стилем
-    local topBar = Instance.new("Frame")
-    topBar.Name = "TopBar"
-    topBar.Size = UDim2.new(1, 0, 0, 50)
-    topBar.BackgroundColor3 = Colors.SidebarBg
-    topBar.BorderSizePixel = 0
-    topBar.Parent = main
-    
-    local topBorder = Instance.new("Frame")
-    topBorder.Size = UDim2.new(1, 0, 0, 1)
-    topBorder.Position = UDim2.new(0, 0, 1, 0)
-    topBorder.BackgroundColor3 = Colors.Border
-    topBorder.BorderSizePixel = 0
-    topBorder.Parent = topBar
-    
-    local titleText = Instance.new("TextLabel")
-    titleText.Size = UDim2.new(1, -20, 1, 0)
-    titleText.Position = UDim2.new(0, 20, 0, 0)
-    titleText.BackgroundTransparency = 1
-    titleText.Text = title or "illgui.space"
-    titleText.TextColor3 = Colors.Accent
-    titleText.TextSize = 13
-    titleText.Font = Enum.Font.Code
-    titleText.TextXAlignment = Enum.TextXAlignment.Left
-    titleText.Parent = topBar
-    
-    -- Sidebar (левая панель с вкладками)
-    local sidebar = Instance.new("Frame")
-    sidebar.Name = "Sidebar"
-    sidebar.Size = UDim2.new(0, 175, 1, -50)
-    sidebar.Position = UDim2.new(0, 0, 0, 50)
-    sidebar.BackgroundColor3 = Colors.SidebarBg
-    sidebar.BorderSizePixel = 0
-    sidebar.Parent = main
-    
-    local sidebarBorder = Instance.new("Frame")
-    sidebarBorder.Size = UDim2.new(0, 1, 1, 0)
-    sidebarBorder.Position = UDim2.new(1, 0, 0, 0)
-    sidebarBorder.BackgroundColor3 = Colors.Border
-    sidebarBorder.BorderSizePixel = 0
-    sidebarBorder.Parent = sidebar
-    
-    local tabList = Instance.new("UIListLayout")
-    tabList.SortOrder = Enum.SortOrder.LayoutOrder
-    tabList.Padding = UDim.new(0, 0)
-    tabList.Parent = sidebar
-    
-    -- Content area (правая часть)
-    local contentArea = Instance.new("Frame")
-    contentArea.Name = "ContentArea"
-    contentArea.Size = UDim2.new(1, -176, 1, -50)
-    contentArea.Position = UDim2.new(0, 176, 0, 50)
-    contentArea.BackgroundColor3 = Colors.ContentBg
-    contentArea.BorderSizePixel = 0
-    contentArea.Parent = main
-    
-    -- Drag functionality
-    local dragging, dragInput, dragStart, startPos
-    
-    local function update(input)
-        local delta = input.Position - dragStart
-        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    return ctx
+end
+
+function IllGui.Begin(ctx, title, size)
+    if not ctx.ScreenGui then
+        ctx.ScreenGui = Instance.new("ScreenGui")
+        ctx.ScreenGui.Name = "IllGuiContext"
+        ctx.ScreenGui.ResetOnSpawn = false
+        ctx.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        ctx.ScreenGui.Parent = game.CoreGui
     end
     
-    topBar.InputBegan:Connect(function(input)
+    local window = ctx.Windows[title]
+    
+    if not window then
+        -- Создаем окно
+        local win = Instance.new("Frame")
+        win.Name = title
+        win.Size = size or UDim2.new(0, 600, 0, 400)
+        win.Position = UDim2.new(0.5, -300, 0.5, -200)
+        win.BackgroundColor3 = Colors.WindowBg
+        win.BorderSizePixel = 0
+        win.ClipsDescendants = false
+        win.Parent = ctx.ScreenGui
+        
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Colors.Border
+        stroke.Thickness = 1
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = win
+        
+        -- Title bar
+        local titleBar = Instance.new("Frame")
+        titleBar.Name = "TitleBar"
+        titleBar.Size = UDim2.new(1, 0, 0, 30)
+        titleBar.BackgroundColor3 = Colors.TitleBg
+        titleBar.BorderSizePixel = 0
+        titleBar.Parent = win
+        
+        local titleBorder = Instance.new("Frame")
+        titleBorder.Size = UDim2.new(1, 0, 0, 1)
+        titleBorder.Position = UDim2.new(0, 0, 1, 0)
+        titleBorder.BackgroundColor3 = Colors.Border
+        titleBorder.BorderSizePixel = 0
+        titleBorder.Parent = titleBar
+        
+        local titleLabel = Instance.new("TextLabel")
+        titleLabel.Size = UDim2.new(1, -10, 1, 0)
+        titleLabel.Position = UDim2.new(0, 10, 0, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = title
+        titleLabel.TextColor3 = Colors.ButtonActive
+        titleLabel.Font = Enum.Font.Code
+        titleLabel.TextSize = 13
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        titleLabel.Parent = titleBar
+        
+        -- Content area
+        local content = Instance.new("Frame")
+        content.Name = "Content"
+        content.Size = UDim2.new(1, -20, 1, -40)
+        content.Position = UDim2.new(0, 10, 0, 35)
+        content.BackgroundTransparency = 1
+        content.BorderSizePixel = 0
+        content.Parent = win
+        
+        -- Layout
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 5)
+        layout.Parent = content
+        
+        -- Dragging
+        local dragging = false
+        local dragStart = nil
+        local startPos = nil
+        
+        titleBar.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                dragStart = input.Position
+                startPos = win.Position
+            end
+        end)
+        
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local delta = input.Position - dragStart
+                win.Position = UDim2.new(
+                    startPos.X.Scale,
+                    startPos.X.Offset + delta.X,
+                    startPos.Y.Scale,
+                    startPos.Y.Offset + delta.Y
+                )
+            end
+        end)
+        
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+        
+        window = {
+            Frame = win,
+            Content = content,
+            Layout = layout,
+            LayoutOrder = 0
+        }
+        
+        ctx.Windows[title] = window
+    end
+    
+    ctx.CurrentWindow = window
+end
+
+function IllGui.End(ctx)
+    ctx.CurrentWindow = nil
+end
+
+-- Text
+function IllGui.Text(ctx, text)
+    local win = ctx.CurrentWindow
+    if not win then return end
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 16)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Colors.Text
+    label.Font = Enum.Font.Code
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.LayoutOrder = win.LayoutOrder
+    label.Parent = win.Content
+    
+    win.LayoutOrder = win.LayoutOrder + 1
+end
+
+-- Separator
+function IllGui.Separator(ctx)
+    local win = ctx.CurrentWindow
+    if not win then return end
+    
+    local sep = Instance.new("Frame")
+    sep.Size = UDim2.new(1, 0, 0, 1)
+    sep.BackgroundColor3 = Colors.Border
+    sep.BorderSizePixel = 0
+    sep.LayoutOrder = win.LayoutOrder
+    sep.Parent = win.Content
+    
+    win.LayoutOrder = win.LayoutOrder + 1
+end
+
+-- Checkbox
+function IllGui.Checkbox(ctx, label, value)
+    local win = ctx.CurrentWindow
+    if not win then return value end
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 20)
+    frame.BackgroundTransparency = 1
+    frame.LayoutOrder = win.LayoutOrder
+    frame.Parent = win.Content
+    
+    local box = Instance.new("Frame")
+    box.Size = UDim2.new(0, 12, 0, 12)
+    box.Position = UDim2.new(0, 0, 0.5, -6)
+    box.BackgroundColor3 = Colors.FrameBg
+    box.BorderSizePixel = 0
+    box.Parent = frame
+    
+    local boxStroke = Instance.new("UIStroke")
+    boxStroke.Color = Colors.Border
+    boxStroke.Thickness = 1
+    boxStroke.Parent = box
+    
+    local check = Instance.new("TextLabel")
+    check.Size = UDim2.new(1, 0, 1, 0)
+    check.BackgroundTransparency = 1
+    check.Text = value and "✓" or ""
+    check.TextColor3 = Colors.CheckMark
+    check.Font = Enum.Font.Code
+    check.TextSize = 10
+    check.Parent = box
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, -18, 1, 0)
+    text.Position = UDim2.new(0, 18, 0, 0)
+    text.BackgroundTransparency = 1
+    text.Text = label
+    text.TextColor3 = Colors.TextDisabled
+    text.Font = Enum.Font.Code
+    text.TextSize = 12
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame
+    
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 1, 0)
+    button.BackgroundTransparency = 1
+    button.Text = ""
+    button.Parent = frame
+    
+    button.MouseButton1Click:Connect(function()
+        value = not value
+        check.Text = value and "✓" or ""
+    end)
+    
+    win.LayoutOrder = win.LayoutOrder + 1
+    return value
+end
+
+-- Slider
+function IllGui.SliderInt(ctx, label, value, min, max, format)
+    local win = ctx.CurrentWindow
+    if not win then return value end
+    
+    format = format or "%d"
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.BackgroundTransparency = 1
+    frame.LayoutOrder = win.LayoutOrder
+    frame.Parent = win.Content
+    
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, 0, 0, 16)
+    text.BackgroundTransparency = 1
+    text.Text = label
+    text.TextColor3 = Colors.TextDisabled
+    text.Font = Enum.Font.Code
+    text.TextSize = 12
+    text.TextXAlignment = Enum.TextXAlignment.Left
+    text.Parent = frame
+    
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(1, 0, 0, 6)
+    track.Position = UDim2.new(0, 0, 0, 20)
+    track.BackgroundColor3 = Colors.FrameBg
+    track.BorderSizePixel = 0
+    track.Parent = frame
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Colors.SliderGrab
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+    
+    local valueText = Instance.new("TextLabel")
+    valueText.Size = UDim2.new(1, 0, 0, 14)
+    valueText.Position = UDim2.new(0, 0, 0, 30)
+    valueText.BackgroundTransparency = 1
+    valueText.Text = string.format(format, value)
+    valueText.TextColor3 = Colors.TextDisabled
+    valueText.Font = Enum.Font.Code
+    valueText.TextSize = 11
+    valueText.TextXAlignment = Enum.TextXAlignment.Right
+    valueText.Parent = frame
+    
+    local dragging = false
+    
+    local function update(input)
+        local pos = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+        value = math.floor(min + (max - min) * pos)
+        fill.Size = UDim2.new(pos, 0, 1, 0)
+        valueText.Text = string.format(format, value)
+    end
+    
+    track.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
-            dragStart = input.Position
-            startPos = main.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
+            update(input)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
         end
     end)
     
@@ -131,352 +315,161 @@ function IllGui:CreateWindow(title)
         end
     end)
     
-    window.ScreenGui = screenGui
-    window.Main = main
-    window.Sidebar = sidebar
-    window.ContentArea = contentArea
+    win.LayoutOrder = win.LayoutOrder + 1
+    return value
+end
+
+-- Button
+function IllGui.Button(ctx, label, size)
+    local win = ctx.CurrentWindow
+    if not win then return false end
     
-    function window:CreateTab(tabName)
-        local tab = {Sections = {}, LeftColumn = nil, RightColumn = nil}
+    size = size or UDim2.new(1, 0, 0, 24)
+    
+    local button = Instance.new("TextButton")
+    button.Size = size
+    button.BackgroundColor3 = Colors.FrameBg
+    button.BorderSizePixel = 0
+    button.Text = label
+    button.TextColor3 = Colors.Text
+    button.Font = Enum.Font.Code
+    button.TextSize = 12
+    button.AutoButtonColor = false
+    button.LayoutOrder = win.LayoutOrder
+    button.Parent = win.Content
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Colors.Border
+    stroke.Thickness = 1
+    stroke.Parent = button
+    
+    local clicked = false
+    
+    button.MouseEnter:Connect(function()
+        button.BackgroundColor3 = Colors.FrameHovered
+    end)
+    
+    button.MouseLeave:Connect(function()
+        button.BackgroundColor3 = Colors.FrameBg
+    end)
+    
+    button.MouseButton1Down:Connect(function()
+        button.BackgroundColor3 = Colors.ButtonActive
+    end)
+    
+    button.MouseButton1Up:Connect(function()
+        button.BackgroundColor3 = Colors.FrameHovered
+    end)
+    
+    button.MouseButton1Click:Connect(function()
+        clicked = true
+    end)
+    
+    win.LayoutOrder = win.LayoutOrder + 1
+    
+    RunService.Heartbeat:Wait()
+    local result = clicked
+    clicked = false
+    return result
+end
+
+-- Колонки
+function IllGui.Columns(ctx, count)
+    local win = ctx.CurrentWindow
+    if not win then return end
+    
+    local columnsFrame = Instance.new("Frame")
+    columnsFrame.Size = UDim2.new(1, 0, 0, 0)
+    columnsFrame.BackgroundTransparency = 1
+    columnsFrame.AutomaticSize = Enum.AutomaticSize.Y
+    columnsFrame.LayoutOrder = win.LayoutOrder
+    columnsFrame.Parent = win.Content
+    
+    local columns = {}
+    local spacing = 10
+    local totalSpacing = spacing * (count - 1)
+    local columnWidth = (1 / count)
+    
+    for i = 1, count do
+        local col = Instance.new("Frame")
+        col.Size = UDim2.new(columnWidth, -totalSpacing / count, 1, 0)
+        col.Position = UDim2.new((i - 1) * columnWidth, (i - 1) * spacing / count, 0, 0)
+        col.BackgroundTransparency = 1
+        col.Parent = columnsFrame
         
-        -- Tab button
-        local tabBtn = Instance.new("TextButton")
-        tabBtn.Name = tabName
-        tabBtn.Size = UDim2.new(1, 0, 0, 40)
-        tabBtn.BackgroundColor3 = Colors.SidebarBg
-        tabBtn.BorderSizePixel = 0
-        tabBtn.Text = "  " .. tabName
-        tabBtn.TextColor3 = Colors.Text
-        tabBtn.TextSize = 13
-        tabBtn.Font = Enum.Font.Code
-        tabBtn.TextXAlignment = Enum.TextXAlignment.Left
-        tabBtn.AutoButtonColor = false
-        tabBtn.Parent = sidebar
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0, 5)
+        layout.Parent = col
         
-        local tabBtnBorder = Instance.new("Frame")
-        tabBtnBorder.Size = UDim2.new(1, 0, 0, 1)
-        tabBtnBorder.Position = UDim2.new(0, 0, 1, 0)
-        tabBtnBorder.BackgroundColor3 = Colors.Border
-        tabBtnBorder.BorderSizePixel = 0
-        tabBtnBorder.Parent = tabBtn
-        
-        -- Tab content с двумя колонками
-        local tabContent = Instance.new("ScrollingFrame")
-        tabContent.Name = tabName .. "Content"
-        tabContent.Size = UDim2.new(1, -20, 1, -20)
-        tabContent.Position = UDim2.new(0, 10, 0, 10)
-        tabContent.BackgroundTransparency = 1
-        tabContent.BorderSizePixel = 0
-        tabContent.ScrollBarThickness = 3
-        tabContent.ScrollBarImageColor3 = Colors.Border
-        tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
-        tabContent.Visible = false
-        tabContent.Parent = contentArea
-        
-        -- Две колонки как на скриншоте
-        local leftColumn = Instance.new("Frame")
-        leftColumn.Name = "LeftColumn"
-        leftColumn.Size = UDim2.new(0.48, 0, 1, 0)
-        leftColumn.Position = UDim2.new(0, 0, 0, 0)
-        leftColumn.BackgroundTransparency = 1
-        leftColumn.Parent = tabContent
-        
-        local leftLayout = Instance.new("UIListLayout")
-        leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        leftLayout.Padding = UDim.new(0, 12)
-        leftLayout.Parent = leftColumn
-        
-        local rightColumn = Instance.new("Frame")
-        rightColumn.Name = "RightColumn"
-        rightColumn.Size = UDim2.new(0.48, 0, 1, 0)
-        rightColumn.Position = UDim2.new(0.52, 0, 0, 0)
-        rightColumn.BackgroundTransparency = 1
-        rightColumn.Parent = tabContent
-        
-        local rightLayout = Instance.new("UIListLayout")
-        rightLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        rightLayout.Padding = UDim.new(0, 12)
-        rightLayout.Parent = rightColumn
-        
-        leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            local maxHeight = math.max(leftLayout.AbsoluteContentSize.Y, rightLayout.AbsoluteContentSize.Y)
-            tabContent.CanvasSize = UDim2.new(0, 0, 0, maxHeight + 20)
-        end)
-        
-        rightLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            local maxHeight = math.max(leftLayout.AbsoluteContentSize.Y, rightLayout.AbsoluteContentSize.Y)
-            tabContent.CanvasSize = UDim2.new(0, 0, 0, maxHeight + 20)
-        end)
-        
-        tabBtn.MouseEnter:Connect(function()
-            if self.CurrentTab ~= tab then
-                tabBtn.BackgroundColor3 = Colors.TabHover
-            end
-        end)
-        
-        tabBtn.MouseLeave:Connect(function()
-            if self.CurrentTab ~= tab then
-                tabBtn.BackgroundColor3 = Colors.SidebarBg
-            end
-        end)
-        
-        tabBtn.MouseButton1Click:Connect(function()
-            for _, t in pairs(self.Tabs) do
-                t.Content.Visible = false
-                t.Button.BackgroundColor3 = Colors.SidebarBg
-            end
-            tabContent.Visible = true
-            tabBtn.BackgroundColor3 = Colors.TabHover
-            self.CurrentTab = tab
-        end)
-        
-        if #self.Tabs == 0 then
-            tabContent.Visible = true
-            tabBtn.BackgroundColor3 = Colors.TabHover
-            self.CurrentTab = tab
-        end
-        
-        tab.Button = tabBtn
-        tab.Content = tabContent
-        tab.LeftColumn = leftColumn
-        tab.RightColumn = rightColumn
-        table.insert(self.Tabs, tab)
-        
-        function tab:CreateSection(sectionName, column)
-            local parent = column == "right" and rightColumn or leftColumn
-            
-            local section = Instance.new("Frame")
-            section.Name = sectionName
-            section.Size = UDim2.new(1, 0, 0, 0)
-            section.BackgroundColor3 = Colors.SectionBg
-            section.BorderSizePixel = 0
-            section.AutomaticSize = Enum.AutomaticSize.Y
-            section.Parent = parent
-            
-            local sectionStroke = Instance.new("UIStroke")
-            sectionStroke.Color = Colors.Border
-            sectionStroke.Thickness = 1
-            sectionStroke.Parent = section
-            
-            local sectionPadding = Instance.new("UIPadding")
-            sectionPadding.PaddingTop = UDim.new(0, 10)
-            sectionPadding.PaddingBottom = UDim.new(0, 10)
-            sectionPadding.PaddingLeft = UDim.new(0, 12)
-            sectionPadding.PaddingRight = UDim.new(0, 12)
-            sectionPadding.Parent = section
-            
-            local sectionLayout = Instance.new("UIListLayout")
-            sectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            sectionLayout.Padding = UDim.new(0, 6)
-            sectionLayout.Parent = section
-            
-            local sectionTitle = Instance.new("TextLabel")
-            sectionTitle.Name = "Title"
-            sectionTitle.Size = UDim2.new(1, 0, 0, 18)
-            sectionTitle.BackgroundTransparency = 1
-            sectionTitle.Text = sectionName
-            sectionTitle.TextColor3 = Colors.Text
-            sectionTitle.TextSize = 12
-            sectionTitle.Font = Enum.Font.CodeBold
-            sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-            sectionTitle.LayoutOrder = 0
-            sectionTitle.Parent = section
-            
-            local sectionObj = {Section = section}
-            
-            -- Toggle (чекбокс как на скриншоте)
-            function sectionObj:CreateToggle(name, default, callback)
-                local toggle = Instance.new("Frame")
-                toggle.Size = UDim2.new(1, 0, 0, 20)
-                toggle.BackgroundTransparency = 1
-                toggle.Parent = section
-                
-                local checkbox = Instance.new("Frame")
-                checkbox.Size = UDim2.new(0, 10, 0, 10)
-                checkbox.Position = UDim2.new(0, 0, 0.5, -5)
-                checkbox.BackgroundColor3 = Colors.CheckboxBg
-                checkbox.BorderSizePixel = 0
-                checkbox.Parent = toggle
-                
-                local checkboxStroke = Instance.new("UIStroke")
-                checkboxStroke.Color = Colors.Border
-                checkboxStroke.Thickness = 1
-                checkboxStroke.Parent = checkbox
-                
-                local checkmark = Instance.new("TextLabel")
-                checkmark.Size = UDim2.new(1, 0, 1, 0)
-                checkmark.BackgroundTransparency = 1
-                checkmark.Text = default and "■" or ""
-                checkmark.TextColor3 = Colors.CheckboxCheck
-                checkmark.TextSize = 8
-                checkmark.Font = Enum.Font.Code
-                checkmark.Parent = checkbox
-                
-                local label = Instance.new("TextLabel")
-                label.Size = UDim2.new(1, -16, 1, 0)
-                label.Position = UDim2.new(0, 16, 0, 0)
-                label.BackgroundTransparency = 1
-                label.Text = name
-                label.TextColor3 = Colors.TextDim
-                label.TextSize = 11
-                label.Font = Enum.Font.Code
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.Parent = toggle
-                
-                local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(1, 0, 1, 0)
-                btn.BackgroundTransparency = 1
-                btn.Text = ""
-                btn.Parent = toggle
-                
-                local enabled = default or false
-                
-                btn.MouseButton1Click:Connect(function()
-                    enabled = not enabled
-                    checkmark.Text = enabled and "■" or ""
-                    if callback then callback(enabled) end
-                end)
-                
-                return toggle
-            end
-            
-            -- Keybind
-            function sectionObj:CreateKeybind(name, default, callback)
-                local keybind = Instance.new("Frame")
-                keybind.Size = UDim2.new(1, 0, 0, 20)
-                keybind.BackgroundTransparency = 1
-                keybind.Parent = section
-                
-                local label = Instance.new("TextLabel")
-                label.Size = UDim2.new(0.5, 0, 1, 0)
-                label.BackgroundTransparency = 1
-                label.Text = name
-                label.TextColor3 = Colors.TextDim
-                label.TextSize = 11
-                label.Font = Enum.Font.Code
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.Parent = keybind
-                
-                local keyBtn = Instance.new("TextButton")
-                keyBtn.Size = UDim2.new(0, 40, 0, 16)
-                keyBtn.Position = UDim2.new(1, -40, 0.5, -8)
-                keyBtn.BackgroundColor3 = Colors.KeybindBg
-                keyBtn.BorderSizePixel = 0
-                keyBtn.Text = default or "F1"
-                keyBtn.TextColor3 = Colors.TextDim
-                keyBtn.TextSize = 10
-                keyBtn.Font = Enum.Font.Code
-                keyBtn.Parent = keybind
-                
-                local keyStroke = Instance.new("UIStroke")
-                keyStroke.Color = Colors.Border
-                keyStroke.Thickness = 1
-                keyStroke.Parent = keyBtn
-                
-                local binding = false
-                local currentKey = default
-                
-                keyBtn.MouseButton1Click:Connect(function()
-                    binding = true
-                    keyBtn.Text = "..."
-                end)
-                
-                UserInputService.InputBegan:Connect(function(input)
-                    if binding and input.UserInputType == Enum.UserInputType.Keyboard then
-                        currentKey = input.KeyCode.Name
-                        keyBtn.Text = currentKey
-                        binding = false
-                        if callback then callback(input.KeyCode) end
-                    end
-                end)
-                
-                return keybind
-            end
-            
-            -- Slider
-            function sectionObj:CreateSlider(name, min, max, default, suffix, callback)
-                local slider = Instance.new("Frame")
-                slider.Size = UDim2.new(1, 0, 0, 45)
-                slider.BackgroundTransparency = 1
-                slider.Parent = section
-                
-                local label = Instance.new("TextLabel")
-                label.Size = UDim2.new(1, 0, 0, 16)
-                label.BackgroundTransparency = 1
-                label.Text = name
-                label.TextColor3 = Colors.TextDim
-                label.TextSize = 11
-                label.Font = Enum.Font.Code
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.Parent = slider
-                
-                local sliderBg = Instance.new("Frame")
-                sliderBg.Size = UDim2.new(1, 0, 0, 4)
-                sliderBg.Position = UDim2.new(0, 0, 0, 22)
-                sliderBg.BackgroundColor3 = Colors.SliderBg
-                sliderBg.BorderSizePixel = 0
-                sliderBg.Parent = slider
-                
-                local sliderFill = Instance.new("Frame")
-                sliderFill.Size = UDim2.new(0, 0, 1, 0)
-                sliderFill.BackgroundColor3 = Colors.SliderFill
-                sliderFill.BorderSizePixel = 0
-                sliderFill.Parent = sliderBg
-                
-                local valueLabel = Instance.new("TextLabel")
-                valueLabel.Size = UDim2.new(1, 0, 0, 14)
-                valueLabel.Position = UDim2.new(0, 0, 0, 30)
-                valueLabel.BackgroundTransparency = 1
-                valueLabel.Text = tostring(default) .. (suffix or "")
-                valueLabel.TextColor3 = Colors.TextDim
-                valueLabel.TextSize = 10
-                valueLabel.Font = Enum.Font.Code
-                valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-                valueLabel.Parent = slider
-                
-                local dragging = false
-                local value = default or min
-                
-                local function updateSlider(input)
-                    local pos = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
-                    value = math.floor(min + (max - min) * pos)
-                    sliderFill.Size = UDim2.new(pos, 0, 1, 0)
-                    valueLabel.Text = tostring(value) .. (suffix or "")
-                    if callback then callback(value) end
-                end
-                
-                sliderBg.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging = true
-                        updateSlider(input)
-                    end
-                end)
-                
-                UserInputService.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging = false
-                    end
-                end)
-                
-                UserInputService.InputChanged:Connect(function(input)
-                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                        updateSlider(input)
-                    end
-                end)
-                
-                local initialPos = (default - min) / (max - min)
-                sliderFill.Size = UDim2.new(initialPos, 0, 1, 0)
-                
-                return slider
-            end
-            
-            return sectionObj
-        end
-        
-        return tab
+        columns[i] = {Frame = col, Layout = layout, LayoutOrder = 0}
     end
     
-    return window
+    win.Columns = columns
+    win.CurrentColumn = 1
+    win.LayoutOrder = win.LayoutOrder + 1
+end
+
+function IllGui.NextColumn(ctx)
+    local win = ctx.CurrentWindow
+    if not win or not win.Columns then return end
+    
+    win.CurrentColumn = win.CurrentColumn + 1
+    if win.CurrentColumn > #win.Columns then
+        win.CurrentColumn = 1
+    end
+end
+
+-- BeginChild для секций
+function IllGui.BeginChild(ctx, name, size)
+    local win = ctx.CurrentWindow
+    if not win then return end
+    
+    local parent = win.Content
+    if win.Columns and win.CurrentColumn then
+        parent = win.Columns[win.CurrentColumn].Frame
+    end
+    
+    local child = Instance.new("Frame")
+    child.Name = name
+    child.Size = size or UDim2.new(1, 0, 0, 200)
+    child.BackgroundColor3 = Colors.ChildBg
+    child.BorderSizePixel = 0
+    child.AutomaticSize = Enum.AutomaticSize.Y
+    child.LayoutOrder = win.LayoutOrder
+    child.Parent = parent
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Colors.Border
+    stroke.Thickness = 1
+    stroke.Parent = child
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingTop = UDim.new(0, 8)
+    padding.PaddingBottom = UDim.new(0, 8)
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.Parent = child
+    
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 5)
+    layout.Parent = child
+    
+    win.ChildStack = win.ChildStack or {}
+    table.insert(win.ChildStack, win.Content)
+    
+    win.Content = child
+    win.Layout = layout
+    local oldOrder = win.LayoutOrder
+    win.LayoutOrder = 0
+    win.OldLayoutOrder = oldOrder
+end
+
+function IllGui.EndChild(ctx)
+    local win = ctx.CurrentWindow
+    if not win or not win.ChildStack or #win.ChildStack == 0 then return end
+    
+    win.Content = table.remove(win.ChildStack)
+    win.LayoutOrder = (win.OldLayoutOrder or 0) + 1
 end
 
 return IllGui
